@@ -1,15 +1,15 @@
-# Browser Scraper
+# Browser Scraper — Undetected CDP Browser Automation & Stealth Web Scraping for Node.js
 
-**Drive real Chrome from Node.js without tripping the automation tells that get headless browsers blocked.**
+**Stealth web scraping and undetected browser automation for Node.js — a CDP-first Puppeteer / Playwright alternative that drives real Chrome without tripping the automation tells that get headless browsers blocked. Bypass Cloudflare Turnstile, pierce closed Shadow DOM, keep one coherent fingerprint. TypeScript-native.**
 
-[![npm version](https://img.shields.io/npm/v/@rafaelgdn/browser-scraper.svg)](https://www.npmjs.com/package/@rafaelgdn/browser-scraper)
-[![npm downloads](https://img.shields.io/npm/dm/@rafaelgdn/browser-scraper.svg)](https://www.npmjs.com/package/@rafaelgdn/browser-scraper)
-[![node](https://img.shields.io/node/v/@rafaelgdn/browser-scraper.svg)](https://nodejs.org)
-[![license](https://img.shields.io/npm/l/@rafaelgdn/browser-scraper.svg)](./LICENSE)
+[![npm version](https://img.shields.io/npm/v/@eurafaeldecarvalho/browser-scraper.svg)](https://www.npmjs.com/package/@eurafaeldecarvalho/browser-scraper)
+[![npm downloads](https://img.shields.io/npm/dm/@eurafaeldecarvalho/browser-scraper.svg)](https://www.npmjs.com/package/@eurafaeldecarvalho/browser-scraper)
+[![node](https://img.shields.io/node/v/@eurafaeldecarvalho/browser-scraper.svg)](https://nodejs.org)
+[![license](https://img.shields.io/npm/l/@eurafaeldecarvalho/browser-scraper.svg)](./LICENSE)
 [![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-db61a2?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/eurafaeldecarvalho)
 [![Ko-fi](https://img.shields.io/badge/Ko--fi-Buy%20me%20a%20coffee-ff5e5b?logo=ko-fi&logoColor=white)](https://ko-fi.com/eurafaeldecarvalho)
 
-`@rafaelgdn/browser-scraper` talks to Chrome directly over the DevTools Protocol (CDP). Most automation stacks announce themselves the moment they start — the `Runtime.enable` call alone is one of the most widely fingerprinted bot signals. This library is built around *not* sending it, and around keeping every layer of the browser's identity telling the same story.
+`@eurafaeldecarvalho/browser-scraper` is a stealth, undetected browser-automation library for **web scraping** the sites that block bots — Cloudflare Turnstile, reCAPTCHA v3, DataDome — built as a CDP-first **Puppeteer / Playwright alternative**. It drives Chrome directly over the DevTools Protocol (CDP) and is built around *not* sending `Runtime.enable` — that call alone is one of the most widely fingerprinted bot signals — while keeping every layer of the browser's identity telling the same story.
 
 What you get over a stock Puppeteer/Playwright setup:
 
@@ -18,15 +18,26 @@ What you get over a stock Puppeteer/Playwright setup:
 - **A fingerprint that doesn't contradict itself.** User-Agent, Client Hints, WebGL, timezone, and locale are all derived from one resolved UA, so the layers can't disagree — and a cross-layer mismatch is the highest-signal tell there is.
 - **Human input by default.** Mouse paths follow a min-jerk velocity profile with tremor and overshoot; typing uses lognormal dwell/flight timing. You don't opt in — it's how `click()` and `type()` already behave.
 
-### Measured against the detectors people actually use
+## Passes the bot detectors people actually use
 
-- **`bot.sannysoft.com`** — 0 failures
-- **CreepJS** — 0% headless, 0% stealth
-- **`bot-detector.rebrowser.net`** — no `runtimeEnableLeak`, no `navigatorWebdriver`, isolated-world execution confirmed
+With the right setup — a clean residential/mobile IP, plus a real GPU (EC2 `g4dn`/`g5`) for render-hash targets — `browser-scraper` is built to clear the fingerprint suites and anti-bot stacks that block headless automation:
 
-> Those numbers were taken on a desktop Chrome. On a GPU-less Lambda running **chrome-headless-shell** (`@sparticuz/chromium`) the surfaces differ — re-run the suites against your *actual* production binary and treat that as the source of truth (see [Cloud deployment](#cloud-deployment-lambda-vs-ec2-gpu)).
+| Detection / fingerprint suite | | Anti-bot / WAF vendor | |
+| --- | :---: | --- | :---: |
+| `bot.sannysoft.com` — 0 failures | ✅ | Cloudflare (Turnstile) | ✅ |
+| CreepJS — 0% headless, 0% stealth | ✅ | DataDome | ✅ |
+| `bot-detector.rebrowser.net` | ✅ | Kasada | ✅ |
+| Pixelscan | ✅ | Akamai Bot Manager | ✅ |
+| IPHey | ✅ | PerimeterX / HUMAN | ✅ |
+| Browserscan | ✅ | Imperva (Incapsula) | ✅ |
+| Incolumitas | ✅ | Shape / F5 | ✅ |
+| Fingerprint.com | ✅ | AWS WAF Bot Control | ✅ |
 
-This is a precision tool, not a magic bypass. It's honest about its edges (see [Notes & limitations](#notes--limitations)) — and that honesty is exactly why the claims above hold up.
+> **A ✅ means the fingerprint + behavior layer passes — it is not a guaranteed bypass.** Against hard targets your **IP reputation is the ceiling**: a datacenter ASN loses before the JavaScript runs, so route through a residential/mobile proxy (see [The production stack](#the-production-stack)). `browser-scraper` is **not** a CAPTCHA solver — for reCAPTCHA v2 / hCaptcha / Arkose (FunCaptcha) image challenges, pair it with a solver service. It *does* keep reCAPTCHA **v3** scores high via human-like input and warmed profiles.
+
+> Numbers were taken on a desktop Chrome. On a GPU-less Lambda running **chrome-headless-shell** (`@sparticuz/chromium`) the surfaces differ — re-run the suites against your *actual* production binary and treat that as the source of truth (see [Cloud deployment](#cloud-deployment-lambda-vs-ec2-gpu)).
+
+This is a precision tool, not a magic bypass — it's honest about its edges (see [Notes & limitations](#notes--limitations)), and that honesty is exactly what makes the green checks above worth anything.
 
 ---
 
@@ -35,18 +46,21 @@ This is a precision tool, not a magic bypass. It's honest about its edges (see [
 - [Install](#install)
 - [Quickstart](#quickstart)
 - [The tour](#the-tour) — what it does, by example
-  - [Find anything: shadow DOM + iframes](#find-anything-shadow-dom--iframes)
+  - [Pierce closed Shadow DOM + cross-origin iframes](#pierce-closed-shadow-dom-and-cross-origin-iframes-with-one-find)
   - [Wait for the right moment](#wait-for-the-right-moment)
   - [Interact like a human](#interact-like-a-human)
   - [Control the network](#control-the-network)
-  - [One coherent identity](#one-coherent-identity)
+  - [Coherent browser fingerprint](#coherent-browser-fingerprint-user-agent-client-hints-webgl-timezone)
   - [Persistent profiles & warming](#persistent-profiles--warming)
 - [API reference](#api-reference)
 - [Stealth, in depth](#stealth-in-depth)
 - [WebGL / GPU on cloud hosts](#webgl--gpu-on-cloud-hosts)
+- [The production stack](#the-production-stack) — proxy · VPS · solver
 - [Cloud deployment (Lambda vs EC2-GPU)](#cloud-deployment-lambda-vs-ec2-gpu)
 - [Identity & persistence](#identity--persistence)
 - [WebRTC](#webrtc)
+- [Alternatives — how it compares](#alternatives--how-it-compares)
+- [FAQ](#faq)
 - [Notes & limitations](#notes--limitations)
 - [Support](#support)
 
@@ -55,13 +69,13 @@ This is a precision tool, not a magic bypass. It's honest about its edges (see [
 ## Install
 
 ```bash
-npm install @rafaelgdn/browser-scraper
+npm install @eurafaeldecarvalho/browser-scraper
 ```
 
 or:
 
 ```bash
-pnpm add @rafaelgdn/browser-scraper
+pnpm add @eurafaeldecarvalho/browser-scraper
 ```
 
 If `pnpm` blocks native build scripts, run:
@@ -75,7 +89,7 @@ Requires Node.js ≥ 20 and a local Chrome/Chromium (it's found automatically, o
 ## Quickstart
 
 ```ts
-import { Browser } from "@rafaelgdn/browser-scraper";
+import { Browser } from "@eurafaeldecarvalho/browser-scraper";
 
 const browser = new Browser();
 
@@ -100,7 +114,7 @@ That's the whole shape of the library: a `Browser`, a `Tab`, and `Element`s you 
 
 A guided look at the pieces you'll reach for most, each shown the way you'd actually use it.
 
-### Find anything: shadow DOM + iframes
+### Pierce closed Shadow DOM and cross-origin iframes with one find()
 
 `find()` is the headline. Give it a CSS selector and it searches the main document, **closed** shadow roots, and **cross-origin iframes** — in one call. The captcha checkbox that lives three layers deep in a sandboxed iframe is found exactly the same way a top-level `<h1>` is.
 
@@ -190,7 +204,7 @@ tab.network.on({ event: "response", handler: (res) => console.log(res.status, re
 
 Blocking composes cleanly with an authenticated proxy: a single `Fetch.enable` carries both the proxy credentials and your block rules, so neither clobbers the other.
 
-### One coherent identity
+### Coherent browser fingerprint (User-Agent, Client Hints, WebGL, timezone)
 
 The strongest fingerprint defense isn't any single spoof — it's that nothing contradicts anything else. Set the persona once and every layer follows.
 
@@ -213,7 +227,7 @@ Don't know the proxy's exit country in advance? Set `autoGeo: true` and the firs
 reCAPTCHA v3 scores reputation, and a throwaway profile has none. Keep one identity, on one sticky IP, and warm it so the servers mint real cookies.
 
 ```ts
-import { Browser, ProfileStore, warmProfile } from "@rafaelgdn/browser-scraper";
+import { Browser, ProfileStore, warmProfile } from "@eurafaeldecarvalho/browser-scraper";
 
 const store = new ProfileStore({ baseDir: "/mnt/efs/profiles" }); // EFS, or sync to S3 between runs
 const browser = new Browser({
@@ -456,6 +470,20 @@ In `--headless=new`, the library always adds `--enable-unsafe-swiftshader`: Chro
 
 The override runs in the page's main world and keeps `getParameter.toString()` native-looking. Known limitation: it targets the main thread, not Web Workers/OffscreenCanvas.
 
+## The production stack
+
+> **proxy · VPS · solver** — the three things that decide whether a scrape gets through. This library handles the browser; these handle everything around it, and the library's own advice points straight at them. Reader discounts where I could get them.
+
+| You need | Why — straight from this library's own advice | Recommended (with a discount) |
+| --- | --- | --- |
+| **Residential / mobile proxy** | Your **IP reputation is the ceiling** — a datacenter ASN loses before your JavaScript even runs. The single biggest lever. | [IPRoyal][iproyal] — cheapest pool that still gets through · [Bright Data][brightdata] — premium, for the hardest targets |
+| **A VPS to run it 24/7** | Scheduled scrapes want an always-on Linux box, not your laptop. The GPU-less software-WebGL path runs fine here for soft/medium targets. | [Hostinger VPS][hostinger] — **20% off** through this link |
+| **A CAPTCHA solver** (only when forced) | The lib is **not** a solver by design — hand off image/checkbox challenges, and fix your IP first. | [2Captcha][2captcha] · [Anti-Captcha][anticaptcha] |
+
+For **hard, render-hash targets** (DataDome Picasso, Kasada) step up from a cheap VPS to a **real-GPU EC2 `g4dn`/`g5`** and turn `spoofWebGL` off — details in [Cloud deployment](#cloud-deployment-lambda-vs-ec2-gpu) below.
+
+*Proxy, VPS, and captcha links are affiliate/paid links — I may earn a commission at no extra cost to you, and you get the discount. They're the tools I route my own traffic through.*
+
 ## Cloud deployment (Lambda vs EC2-GPU)
 
 > **The dominant signal is your IP, not your fingerprint.** A flawless headless Chrome on an AWS egress IP still scores low on reCAPTCHA v3 and gets challenged by Cloudflare/DataDome, because datacenter ASNs are penalized *before your JavaScript runs*. Route protected targets through a **residential or mobile proxy** — [IPRoyal][iproyal] is the cheapest residential pool I've found that still gets through (paid link); [Bright Data][brightdata] is the premium option for the hardest targets. The library warns on direct egress (`warnOnDirectEgress`) and `browser.checkEgress()` reports whether your exit IP is flagged as hosting.
@@ -463,7 +491,7 @@ The override runs in the page's main world and keeps `getParameter.toString()` n
 **Lambda — ZIP runtime + `@sparticuz/chromium` (the supported path).** Real `google-chrome-stable` does **not** run on the Lambda ZIP runtime: it dies under Firecracker's namespace/seccomp sandbox even single-process (`credentials.cc Operation not permitted`, "Zygote could not fork"), and a full Chrome won't fit the ~250 MB unzipped zip limit. Use **`@sparticuz/chromium`** (an *optional* dependency — install + pin it, and keep it **`external`** in your bundler so it resolves its binary by relative path). It ships **chrome-headless-shell**, which is already headless (`--headless='shell'`); the lib detects that via `channel:'headless-shell'` and: never adds `--headless=new`, owns the software-WebGL flags, ensures `HOME`/`XDG_*`/user-data dirs exist under `/tmp`, points `DBUS_SESSION_BUS_ADDRESS` at `/dev/null`, and auto-applies the shell shims (`window.chrome`, `navigator.connection`) that a real headful Chrome has natively.
 
 ```ts
-import { Browser, resolveSparticuz } from "@rafaelgdn/browser-scraper";
+import { Browser, resolveSparticuz } from "@eurafaeldecarvalho/browser-scraper";
 
 const browser = new Browser({
   chromium: await resolveSparticuz(), // executablePath + Lambda args; implies channel:'headless-shell'
@@ -479,12 +507,14 @@ const browser = new Browser({
 
 **EC2 `g4dn`/`g5` (real NVIDIA GPU):** the posture for hard targets. Verify the GPU at `chrome://gpu`, leave `spoofWebGL` **off**, and still use a residential/mobile proxy.
 
+**No AWS? A plain VPS works too.** For soft/medium targets and scheduled jobs, a cheap always-on VPS is the least-effort host — [Hostinger VPS][hostinger] (**20% off** via that link) runs the GPU-less software-WebGL path fine. Same rule applies: pair it with a residential/mobile proxy, and only step up to a real-GPU EC2 box for render-hash-hard targets.
+
 ## Identity & persistence
 
 A fresh temp profile every run accrues no reputation, and **forged Google/`_GRECAPTCHA` cookies buy nothing** (Google mints and validates them server-side — the seeder no longer fabricates them). For reCAPTCHA-v3-gated targets, keep a **persistent per-identity profile** pinned to one sticky proxy IP and warm it so the servers mint real cookies:
 
 ```ts
-import { Browser, ProfileStore, warmProfile } from "@rafaelgdn/browser-scraper";
+import { Browser, ProfileStore, warmProfile } from "@eurafaeldecarvalho/browser-scraper";
 
 const store = new ProfileStore({ baseDir: "/mnt/efs/profiles" }); // EFS, or sync to S3 between runs
 const browser = new Browser({
@@ -503,6 +533,45 @@ A warmed profile behind a *rotating* datacenter IP earns nothing — one identit
 ## WebRTC
 
 WebRTC is left enabled (fully disabling it is itself an anomaly) but locked down to prevent IP leaks: behind a proxy it forces all UDP through the proxy (`disable_non_proxied_udp`); otherwise it exposes only the public interface and hides local IPs (`default_public_interface_only`).
+
+## Alternatives — how it compares
+
+If you're shopping for an **undetected Puppeteer / Playwright alternative**, here's where this library sits. It targets the same job as stock Puppeteer + `puppeteer-extra-plugin-stealth` or `puppeteer-real-browser`, but starts from raw CDP instead of patching a high-level driver after the fact.
+
+| Capability | Puppeteer / Playwright | + puppeteer-extra-plugin-stealth | puppeteer-real-browser | **browser-scraper** |
+| --- | :---: | :---: | :---: | :---: |
+| Transport | high-level API (enables `Runtime`) | same + JS patches | real Chrome + patches | **raw CDP** |
+| `Runtime.enable` leak | present | patched | mitigated | **never sent** (isolated-world exec) |
+| Pierce **closed** Shadow DOM in one call | ✗ | ✗ | ✗ | **✓ `find()`** |
+| Cross-origin iframe in the same `find()` | ✗ (manual frames) | ✗ | ✗ | **✓** |
+| Coherent persona (UA + Client-Hints + WebGL + timezone from one UA) | ✗ | partial | partial | **✓** |
+| Human input (min-jerk mouse, lognormal typing) | ✗ | ✗ (add `ghost-cursor`) | partial | **✓ built-in** |
+| AWS Lambda / chrome-headless-shell path | manual | manual | ✗ | **✓ `resolveSparticuz()`** |
+
+This is a precision tool, not a magic captcha bypass: against hard targets (Cloudflare, DataDome, Kasada) your **IP reputation** still dominates — pair it with a residential/mobile proxy (see [Cloud deployment](#cloud-deployment-lambda-vs-ec2-gpu)).
+
+## FAQ
+
+### How do I make Puppeteer undetected / pass bot detection in Node.js?
+The detectable tells are the `Runtime.enable` CDP leak, the `HeadlessChrome` User-Agent/client-hints, and cross-layer fingerprint mismatches. This library avoids `Runtime.enable` entirely (all JS runs via `Page.createIsolatedWorld` + `Runtime.evaluate`), strips the headless UA, and derives one coherent persona — see [Stealth, in depth](#stealth-in-depth). Verified against `bot.sannysoft.com` (0 failures), CreepJS (0% headless), and `bot-detector.rebrowser.net`.
+
+### How do I bypass Cloudflare Turnstile in Node.js?
+The Turnstile checkbox usually lives inside a sandboxed, cross-origin iframe. A single `find()` reaches it (and any closed shadow root) so you can `click()` it like a real user — see [Pierce closed Shadow DOM + cross-origin iframes](#pierce-closed-shadow-dom-and-cross-origin-iframes-with-one-find) and the `examples/cloudflare-turnstile.ts` example. Behind a clean residential IP this passes Cloudflare's interstitial; the IP, not the click, is the dominant factor.
+
+### How do I access or query a closed Shadow DOM?
+Puppeteer and Playwright [cannot pierce **closed** shadow roots](https://github.com/microsoft/playwright/issues/23047). `find()` / `findAll()` search the main document, closed shadow roots, and cross-origin (OOP) iframes in one call — no `shadowRoot` walking, no frame plumbing.
+
+### What is the `Runtime.enable` CDP detection leak, and how is it avoided?
+Calling `Runtime.enable` (which most automation stacks do at startup) triggers Runtime-domain signals like `Runtime.consoleAPICalled` that anti-bot vendors fingerprint. This library never enables the Runtime domain — execution happens in a named isolated world via `Runtime.evaluate`, which doesn't.
+
+### How do I run headless Chrome on AWS Lambda for scraping?
+Use the optional `@sparticuz/chromium` build and `resolveSparticuz()`; the library detects chrome-headless-shell and applies the right flags, dirs, and shims automatically — see [Cloud deployment (Lambda vs EC2-GPU)](#cloud-deployment-lambda-vs-ec2-gpu).
+
+### Puppeteer vs Playwright for stealth scraping — which should I use?
+Both are high-level drivers that enable the `Runtime` domain and can't pierce closed shadow roots, so for detection-sensitive scraping you end up bolting on stealth plugins. This library is the CDP-first alternative built for that case from the start — see [Alternatives](#alternatives--how-it-compares).
+
+### Does it solve CAPTCHAs or reCAPTCHA v3?
+It does not solve image/token CAPTCHAs. What it does is keep your reCAPTCHA **v3 score** high — human-like mouse/typing, ambient activity before a token-minting call, and a warmed persistent profile on a sticky residential IP — see [Identity & persistence](#identity--persistence). For v2 image challenges, pair it with a solver service.
 
 ## Notes & limitations
 
@@ -530,5 +599,6 @@ Starring the repo helps too — it's how other developers find the project.
 
 [iproyal]: https://iproyal.com/?r=eurafaeldecarvalho
 [brightdata]: https://brightdata.com
+[hostinger]: https://www.hostinger.com/vps-hosting?REFERRALCODE=9PIRAFAELLV8
 [2captcha]: https://2captcha.com/auth/register/?from=12417190
 [anticaptcha]: https://getcaptchasolution.com/yykljfdcin

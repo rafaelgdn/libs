@@ -3,4 +3,4 @@ dist/
 *.png
 
 # scratch: firecrawl raw search dumps (curated .md notes are kept)
-.firecrawl/*.json
+.firecrawl/
